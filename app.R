@@ -87,12 +87,11 @@ output$neighborhood_map <- renderPlot({
   }
 
   label_location <- as.data.frame(label_location)
-  str(label_location)
+  
   label_location[,2:3] <- sapply(label_location[,2:3], as.numeric)
   colnames(label_location) <- c("Cluster", "Cell.X.Position", "Cell.Y.Position")
   label_location$Cluster <- gsub("Cluster_", "", label_location$Cluster)
 
-  str(label_location)
 
   ggplot(coordinates, aes(Cell.X.Position, Cell.Y.Position))+
     geom_point(alpha = 0.2)+
