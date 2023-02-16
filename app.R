@@ -38,6 +38,7 @@ find_communities_list <- function(spe_object, radius, neighborhood_size, cell_ty
                                           feature_colname = "Phenotype")
     
     communities_as_df <- colData(communities) %>% as.data.frame()
+    communities_as_df <- cbind(communities_as_df, spatialCoords(communities))
     
     return(communities_as_df)
     
@@ -293,18 +294,22 @@ server <- function(input, output, session) {
     paste("Finished processing", length(images_as_list()), "images into a list")
   })
   
-  global = reactiveValues(neighborhoods_df = NULL)
+  global = reactiveValues(neighborhoods_df = NULL, cell_level_neighborhoods = NULL)
   
   observeEvent(input$run_detection,
                {
-                 req(images_as_list())
+                 req(images_as_list()) # Need to put images into lists first
                  
+                 # Run neighborhood detection, returns a list with cell level data per image
                  all_neighborhoods <- lapply(images_as_list(), find_communities_list, radius = input$final_radius, neighborhood_size = input$min_neighborhood_size,
                                              cell_types = input$cell_types)
                  
                  print("!!!MESSAGE!!! FINISHED DETECTING NEIGHBORHOODS")
                  
+                 # Delete entries for which no neighborhoods were detected
                  all_neighborhoods <- all_neighborhoods %>% purrr::discard(is.null)
+                 
+                 save(all_neighborhoods, file="cell_level_neighborhood_data.RData")
                  
                  community_summary <- lapply(all_neighborhoods, function(x) {
                    summary_no_location <- x %>% filter(!is.na(Neighborhood)) %>% group_by(Neighborhood, Phenotype) %>% summarise(sum = n()) %>%
@@ -321,30 +326,7 @@ server <- function(input, output, session) {
                  global$neighborhoods_df <- community_summary
                })
   
-  
-  # neighborhoods_df <- eventReactive(input$run_detection,
-  #                                   {
-  #                                     req(images_as_list())
-  #                                     
-  #                                     all_neighborhoods <- lapply(images_as_list(), find_communities_list, radius = input$final_radius, neighborhood_size = input$min_neighborhood_size,
-  #                                                                 cell_types = input$cell_types)
-  #                                     
-  #                                     print("!!!MESSAGE!!! FINISHED DETECTING NEIGHBORHOODS")
-  #                                     
-  #                                     community_summary <- lapply(all_neighborhoods, function(x) {
-  #                                       summary_no_location <- x %>% filter(!is.na(Neighborhood)) %>% group_by(Neighborhood, Phenotype) %>% summarise(sum = n()) %>%
-  #                                         pivot_wider(names_from = "Phenotype", values_from = "sum")
-  #                                       
-  #                                       summary_no_location[is.na(summary_no_location)] <- 0
-  #                                       
-  #                                       summary_no_location <- summary_no_location %>% filter(Neighborhood != "Free_cell")
-  #                                     })
-  #                                     
-  #                                     community_summary <-data.table::rbindlist(community_summary, fill=TRUE, idcol="Image")
-  #                                     community_summary[is.na(community_summary)] <- 0
-  #                                     print(paste("!!!MESSAGE!!!", "Detected", nrow(community_summary), "neighborhoods in", length(unique(community_summary$Image)), "images"))
-  #                                     return(community_summary)
-  #                                   })
+  observe({print(head(global$cell_level_neighborhoods))})
   
   tree <- reactive({
     req(global$neighborhoods_df)
@@ -430,7 +412,6 @@ server <- function(input, output, session) {
     }
   )
 }
-
 
 
 
