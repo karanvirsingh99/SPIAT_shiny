@@ -120,7 +120,8 @@ ui <- fluidPage(
                        h4("A dendrogram and barplots will pop up in the Plots")),
                tabPanel("Plots",
                        plotOutput("dendrogram"),
-                       plotOutput("bar_plot")),
+                       plotOutput("bar_plot"),
+                       plotOutput("avg_bar_plot")),
                tabPanel("Summary",
                         tableOutput("summary_stats"),
                         ("This table shows the average proportion of each cell type in each neighborhood type")
@@ -385,6 +386,33 @@ server <- function(input, output, session) {
       ylab("# of cells")
       
     print(barplot)
+  })
+  
+  output$avg_bar_plot <- renderPlot({
+    req(tree())
+    clust <- cutree(tree(), k=input$number_of_clusters)
+    neighborhood_df_with_LMA <- global$neighborhoods_df %>% mutate(New_Neighborhood = clust)
+    
+    bar_data <- neighborhood_df_with_LMA %>%
+      mutate(COMMUNITY_ID = row_number()) %>%
+      select(-c("Image", "Neighborhood")) %>% pivot_longer(cols = -c("COMMUNITY_ID","New_Neighborhood")) %>%
+      group_by(COMMUNITY_ID) %>%
+      mutate(prop = value/sum(value)) %>%
+      group_by(New_Neighborhood, name) %>%
+      summarize(prop = mean(prop))
+    
+    barplot <- bar_data %>%
+      ggplot(aes(x=New_Neighborhood, y=prop, fill=name))+
+      geom_col()+
+      scale_fill_manual(name = "Cell Type",
+                        values = (str_split(input$colors, " "))[[1]])+
+      theme(axis.text.x=element_blank(),
+            axis.ticks.x=element_blank())+
+      xlab(NULL)+
+      ylab("# of cells")
+    print(head(bar_data))
+    print(barplot)
+    
   })
   
   output$summary_stats <- renderTable({
