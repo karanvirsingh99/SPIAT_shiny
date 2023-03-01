@@ -99,7 +99,8 @@ ui <- fluidPage(
                actionButton("run_detection", "Run neighborhood detection")),
                tabPanel("Plot",
                numericInput("number_of_clusters","Number of clusters", 2),
-               textInput("colors", "Enter colors for the barplot", value = pal_npg()(10)),
+               textInput("colors", "Enter colors for the barplot", value = c("black", "#afcbe3","#377eb8","#f4a3a5",
+                                                                             "#e41a1d", "#4DAF4A", "#FFFF33", "#800080", "#c080c0")),
                downloadButton("download", "Download .csv")
              ))),
              mainPanel(tabsetPanel(
